@@ -1,13 +1,10 @@
 const Router = require("express").Router();
 
-const { where } = require("sequelize");
-const { project, team } = require("../db/models");
+const { project, team, user } = require("../db/models");
+const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
-  console.log(req.body);
-
   try {
-    console.log(req.session.user_id);
     const data = await project.findByPk(req.session.user_id);
     res.json(data);
   } catch (err) {
@@ -53,10 +50,23 @@ Router.get("/:id", async (req, res) => {
   }
 });
 
+Router.post("/getFreeUsers", async (req, res) => {
+  const project_id = req.body.project_id;
+
+  try {
+    const data = await getFreeAndActiveUsers(project_id, req); // Передаем req
+
+    res.json(data);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ error: "Ошибка при получении данных", details: err });
+  }
+});
+
 Router.post("/create", async (req, res) => {
   const { title, description, gitLink, img } = req.body;
   const owner_id = req.session.user_id;
-  console.log(title, description, gitLink, img, owner_id);
 
   try {
     const data = await project.create({
@@ -75,7 +85,6 @@ Router.post("/create", async (req, res) => {
 Router.put("/update/:id", async (req, res) => {
   const { title, description, gitLink, img } = req.body;
   const id = req.params.id;
-  console.log(id, title, description, gitLink, img);
 
   try {
     await project.update(

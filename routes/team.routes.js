@@ -2,6 +2,7 @@ const Router = require("express").Router();
 
 const { where } = require("sequelize");
 const { team, user } = require("../db/models");
+const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
   try {
@@ -15,9 +16,11 @@ Router.get("/", async (req, res) => {
 //получение списка участников проекта
 Router.get("/:project_id", async (req, res) => {
   const project_id = req.params.project_id;
+  console.log(project_id);
 
   try {
     const user_id_arr = await team.findAll({ where: { project_id } });
+    console.log(user_id_arr);
 
     const data = await Promise.all(
       user_id_arr.map(async (person) => {
@@ -27,8 +30,9 @@ Router.get("/:project_id", async (req, res) => {
         });
       })
     );
+    // console.log(data);
 
-    res.json(...data);
+    res.json(data);
   } catch (err) {
     res.status(500).json(err);
   }
@@ -94,19 +98,21 @@ Router.post("/login", async (req, res) => {
   }
 });
 
-Router.post("/create", async (req, res) => {
-  const { title, description, gitLink, img } = req.body;
-  const owner_id = req.session.user_id;
-  console.log(title, description, gitLink, img, owner_id);
+Router.put("/create", async (req, res) => {
+  const { user_id, project_id } = req.body;
 
   try {
-    const data = await project.create({
-      title,
-      description,
-      owner_id,
-      gitLink,
-      img,
+    const isAlreadyInTeam = await team.findAll({
+      where: { user_id, project_id },
     });
+
+    !isAlreadyInTeam.length
+      ? await team.create({
+          user_id,
+          project_id,
+        })
+      : res.status(403).json("пользователь уже на проекте");
+    const data = await getFreeAndActiveUsers(project_id, req);
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -119,6 +125,21 @@ Router.delete("/delete/:id", async (req, res) => {
     const data = await project.destroy({
       where: { id },
     });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
+Router.delete("/deleteUser/:user_id", async (req, res) => {
+  const user_id = req.params.user_id;
+  const project_id = req.body.project_id;
+  try {
+    await team.destroy({
+      where: { user_id, project_id },
+    });
+
+    const data = await getFreeAndActiveUsers(project_id, req);
     res.json(data);
   } catch (err) {
     res.status(500).json(err);

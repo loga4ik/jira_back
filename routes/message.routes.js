@@ -3,14 +3,13 @@ const router = express.Router();
 const { message } = require("../db/models");
 
 // Получение всех сообщений для конкретного проекта
-router.get('/project/:projectId', async (req, res) => {
+router.get('/:projectId', async (req, res) => {
   const { projectId } = req.params;
   try {
     const messages = await message.findAll({
       where: {
         project_id: projectId,
       },
-      include: ['User'], // Можно добавить имя пользователя, если необходимо
     });
     res.json(messages);
   } catch (err) {
@@ -19,7 +18,7 @@ router.get('/project/:projectId', async (req, res) => {
 });
 
 // Отправка сообщения в проект
-router.post('/project/:projectId', async (req, res) => {
+router.post('/:projectId', async (req, res) => {
   const { projectId } = req.params;
   const { sender_id, message } = req.body;
   try {

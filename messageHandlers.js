@@ -2,11 +2,10 @@ const WebSocket = require("ws");
 const { message } = require("./db/models");
 
 const handleMessage = async (userMessage, wss) => {
-  console.log(wss);
-  
   try {
     const parsedMessage = JSON.parse(userMessage);
     const { projectId, user_id, text } = parsedMessage;
+    console.log("handler");
 
     // Сохраняем сообщение в базу данных
     const newMessage = await message.create({
@@ -14,7 +13,6 @@ const handleMessage = async (userMessage, wss) => {
       project_id: projectId,
       text: text,
     });
-    console.log(newMessage);
 
     // Отправка сообщения всем клиентам
     wss.clients.forEach((client) => {
@@ -22,6 +20,7 @@ const handleMessage = async (userMessage, wss) => {
         client.send(JSON.stringify(newMessage));
       }
     });
+    
   } catch (error) {
     console.error("Error handling message:", error);
   }
