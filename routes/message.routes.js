@@ -1,9 +1,10 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { message } = require("../db/models");
+const { message, user } = require("../db/models");
+const { where } = require("sequelize");
 
 // Получение всех сообщений для конкретного проекта
-router.get('/:projectId', async (req, res) => {
+router.get("/:projectId", async (req, res) => {
   const { projectId } = req.params;
   try {
     const messages = await message.findAll({
@@ -11,14 +12,24 @@ router.get('/:projectId', async (req, res) => {
         project_id: projectId,
       },
     });
+    messages.map(async (item) => {
+      const login = await user.findOne({
+        attributes: ["login"],
+        where: { id: item.user_id },
+      });
+      item.dataValues.login = login;
+      console.log(login);
+    }).dataValues;
+    // console.log(messages);
+
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
 // Отправка сообщения в проект
-router.post('/:projectId', async (req, res) => {
+router.post("/:projectId", async (req, res) => {
   const { projectId } = req.params;
   const { sender_id, message } = req.body;
   try {
@@ -29,7 +40,7 @@ router.post('/:projectId', async (req, res) => {
     });
     res.status(201).json(newMessage);
   } catch (err) {
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

@@ -1,0 +1,11 @@
+Установка package.json : npm init -y
+
+Для БД:
+npm i sequelize sequelize-cli pg pg-hstore
+Создать файл .sequelizerc  (в него поместить настройки с сайта sequelizerc)
+
+npx sequelize init
+
+Команда по созданию БД : npx sequelize db:create
+Команда по созданию модели БД : npx sequelize model:create --name nameStudent(назв модели-будущая табл) --attributes name:text(разв и тип столбцов) 
+Команда по накатыванию миграции : npx sequelize db:migrate

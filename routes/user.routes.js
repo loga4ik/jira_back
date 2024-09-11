@@ -87,7 +87,6 @@ Router.post("/create", async (req, res) => {
     password,
   } = req.body;
 
-  console.log(req.body);
 
   try {
     const isBusy = await user.findOne({ where: { login: login } });
@@ -108,8 +107,6 @@ Router.post("/create", async (req, res) => {
       req.session.user_id = data.id;
       res.json(data);
     }
-    //принудительно вернуть ошибке с сервера
-    // res.status(500).json(err);
   } catch (err) {
     res.status(500).json(err);
   }
