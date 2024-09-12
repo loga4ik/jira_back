@@ -18,9 +18,7 @@ router.get("/:projectId", async (req, res) => {
         where: { id: item.user_id },
       });
       item.dataValues.login = login;
-      console.log(login);
     }).dataValues;
-    // console.log(messages);
 
     res.json(messages);
   } catch (err) {

@@ -16,12 +16,9 @@ Router.get("/", async (req, res) => {
 //получение списка участников проекта
 Router.get("/:project_id", async (req, res) => {
   const project_id = req.params.project_id;
-  console.log(project_id);
 
   try {
     const user_id_arr = await team.findAll({ where: { project_id } });
-    console.log(user_id_arr);
-
     const data = await Promise.all(
       user_id_arr.map(async (person) => {
         return await user.findAll({
@@ -30,7 +27,6 @@ Router.get("/:project_id", async (req, res) => {
         });
       })
     );
-    // console.log(data);
 
     res.json(data);
   } catch (err) {
@@ -77,7 +73,6 @@ Router.post("/login", async (req, res) => {
   try {
     try {
       const currentUser = await project.findOne({ where: { login } });
-      // console.log(currentUser);
       const isMatch = await comparePassword({
         possiblePassword: password,
         hashedPassword: currentUser.password,
@@ -86,8 +81,6 @@ Router.post("/login", async (req, res) => {
         return res.status(401).send("invalid password or login").json();
       } else {
         req.session.user_id = currentUser.id;
-        // console.log(req.session);
-
         res.json(currentUser);
       }
     } catch (error) {

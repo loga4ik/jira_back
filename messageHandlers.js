@@ -5,7 +5,6 @@ const handleMessage = async (userMessage, wss) => {
   try {
     const parsedMessage = JSON.parse(userMessage);
     const { projectId, user_id, text } = parsedMessage;
-    console.log("handler");
 
     // Сохраняем сообщение в базу данных
     const newMessage = await message.create({

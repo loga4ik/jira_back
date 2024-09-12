@@ -8,12 +8,8 @@ const comparePassword = async ({ possiblePassword, hashedPassword }) => {
 };
 
 Router.get("/", async (req, res) => {
-  // console.log(req.body);
-
   try {
-    // console.log(req.session.user_id);
     const data = await user.findByPk(req.session.user_id);
-    // !data && res.status(500).json(err);
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -54,7 +50,6 @@ Router.post("/login", async (req, res) => {
   try {
     try {
       const currentUser = await user.findOne({ where: { login } });
-      // console.log(currentUser);
       const isMatch = await comparePassword({
         possiblePassword: password,
         hashedPassword: currentUser.password,
@@ -63,8 +58,6 @@ Router.post("/login", async (req, res) => {
         return res.status(401).send("invalid password or login").json();
       } else {
         req.session.user_id = currentUser.id;
-        // console.log(req.session);
-
         res.json(currentUser);
       }
     } catch (error) {
@@ -86,7 +79,6 @@ Router.post("/create", async (req, res) => {
     profile_image,
     password,
   } = req.body;
-
 
   try {
     const isBusy = await user.findOne({ where: { login: login } });
