@@ -43,6 +43,31 @@ Router.put("/addUserInSubtask", async (req, res) => {
   }
 });
 
+Router.put("/addUserInSubtaskRename", async (req, res) => {
+  const { id, user_id, title } = req.body;
+  console.log(id, user_id, title);
+
+  try {
+    const statusResult = await status.findOne({
+      where: { title: "in process" },
+    });
+    const status_id = statusResult ? statusResult.id : null;
+
+    if (!status_id) {
+      return res.status(400).json({ error: "Status not found" });
+    }
+
+    const isApdated = await subtask.update(
+      { user_id, status_id, title },
+      { where: { id } }
+    );
+    const data = await subtask.findByPk(id);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
 Router.put("/finishSubtask:id", async (req, res) => {
   const id = req.params.id;
   try {

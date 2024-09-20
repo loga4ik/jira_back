@@ -24,7 +24,7 @@ Router.get("/getAllProjects", async (req, res) => {
 Router.get("/getUserProjects/:user_id", async (req, res) => {
   const user_id = req.params.user_id;
   try {
-    const owner = await project.findOne({ where: { owner_id: user_id } });
+    const owner = await project.findAll({ where: { owner_id: user_id } });
     const projectIds = await team.findAll({
       attributes: ["project_id"],
       where: { user_id },
@@ -54,9 +54,10 @@ Router.post("/getFreeUsers", async (req, res) => {
   const project_id = req.body.project_id;
 
   try {
+// const data = await 
     const data = await getFreeAndActiveUsers(project_id, req); // Передаем req
 
-    res.json(data);
+    res.json(data.freeUsers);
   } catch (err) {
     res
       .status(500)

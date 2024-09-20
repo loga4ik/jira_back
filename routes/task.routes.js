@@ -19,16 +19,19 @@ Router.get("/getTasksAndSubtasks/:project_id", async (req, res) => {
         project_id,
       },
     });
+    const subtaskArr = [];
     await Promise.all(
       taskArr.map(async (task) => {
-        task.dataValues.subtasks = await subtask.findAll({
-          where: {
-            task_id: task.id,
-          },
-        });
+        subtaskArr.push(
+          ...(await subtask.findAll({
+            where: {
+              task_id: task.id,
+            },
+          }))
+        );
       })
     );
-    res.json(taskArr);
+    res.json({ tasks: taskArr, subtasks: subtaskArr });
   } catch (err) {
     res.status(500).json(err);
   }
