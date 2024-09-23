@@ -4,8 +4,11 @@ const { project, team, user } = require("../db/models");
 const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
+  const id = res.params.peoject_id;
   try {
-    const data = await project.findByPk(req.session.user_id);
+    const data = await project.findByPk(id);
+    console.log(data);
+
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -54,7 +57,7 @@ Router.post("/getFreeUsers", async (req, res) => {
   const project_id = req.body.project_id;
 
   try {
-// const data = await 
+    // const data = await
     const data = await getFreeAndActiveUsers(project_id, req); // Передаем req
 
     res.json(data.freeUsers);

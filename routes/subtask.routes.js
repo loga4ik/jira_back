@@ -57,10 +57,10 @@ Router.put("/addUserInSubtaskRename", async (req, res) => {
       return res.status(400).json({ error: "Status not found" });
     }
 
-    const isApdated = await subtask.update(
-      { user_id, status_id, title },
-      { where: { id } }
-    );
+    // const isApdated = await subtask.update(
+    //   { user_id, status_id, title },
+    //   { where: { id } }
+    // );
     const data = await subtask.findByPk(id);
     res.json(data);
   } catch (err) {
