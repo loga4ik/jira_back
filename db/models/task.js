@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER,
       },
       project_id: {
+        require: true,
         type: DataTypes.INTEGER,
       },
       title: {

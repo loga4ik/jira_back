@@ -1,7 +1,5 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class subtask extends Model {
     /**
@@ -13,36 +11,40 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
     }
   }
-  subtask.init({
-    id: {
-      allowNull: false,
-      autoIncrement: true,
-      primaryKey: true,
-      type: DataTypes.INTEGER
+  subtask.init(
+    {
+      id: {
+        allowNull: false,
+        autoIncrement: true,
+        primaryKey: true,
+        type: DataTypes.INTEGER,
+      },
+      task_id: {
+        require: true,
+        type: DataTypes.INTEGER,
+      },
+      title: {
+        type: DataTypes.STRING,
+      },
+      user_id: {
+        type: DataTypes.INTEGER,
+      },
+      status_id: {
+        type: DataTypes.INTEGER,
+      },
+      createdAt: {
+        allowNull: false,
+        type: DataTypes.DATE,
+      },
+      updatedAt: {
+        allowNull: false,
+        type: DataTypes.DATE,
+      },
     },
-    task_id: {
-      type: DataTypes.INTEGER
-    },
-    title: {
-      type: DataTypes.STRING
-    },
-    user_id: {
-      type: DataTypes.INTEGER
-    },
-    status_id: {
-      type: DataTypes.INTEGER
-    },
-    createdAt: {
-      allowNull: false,
-      type: DataTypes.DATE
-    },
-    updatedAt: {
-      allowNull: false,
-      type: DataTypes.DATE
+    {
+      sequelize,
+      modelName: "subtask",
     }
-  }, {
-    sequelize,
-    modelName: 'subtask',
-  });
+  );
   return subtask;
 };

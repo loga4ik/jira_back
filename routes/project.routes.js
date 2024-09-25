@@ -1,14 +1,12 @@
 const Router = require("express").Router();
 
-const { project, team, user } = require("../db/models");
+const { project, team, task, subtask } = require("../db/models");
 const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
   const id = res.params.peoject_id;
   try {
     const data = await project.findByPk(id);
-    console.log(data);
-
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -111,6 +109,66 @@ Router.delete("/delete/:id", async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
+  }
+});
+
+Router.put("/updateAll", async (req, res) => {
+  const { title, description, project_id, tasks } = req.body;
+
+  try {
+    let result = {
+      project: null, // Обновленный проект
+      tasks: [], // Объект, где ключи — это id задач, а значения — обновленные задачи
+      subtasks: [], // Объект, где ключи — это id подзадач, а значения — обновленные подзадачи
+    };
+
+    // Обновляем проект и возвращаем обновленный проект
+    const [_, updatedProject] = await project.update(
+      { title, description },
+      {
+        where: { id: project_id },
+        returning: true, // Для PostgreSQL, возвращает обновленный проект
+      }
+    );
+    result.project = updatedProject[0]; // Устанавливаем обновленный проект
+
+    // Обновляем задачи и подзадачи
+    await Promise.all(
+      tasks.map(async (taskElem) => {
+        const [__, updatedTask] = await task.update(
+          { ...taskElem, project_id },
+          {
+            where: { id: taskElem.id },
+            returning: true,
+          }
+        );
+
+        result.tasks.push(updatedTask[0]); // Добавляем задачу в объект `tasks`
+
+        const updatedSubtasks = await Promise.all(
+          taskElem.subtasks.map(async (subtaskElem) => {
+            const [___, updatedSubtask] = await subtask.update(
+              { ...subtaskElem, task_id: taskElem.id },
+              {
+                where: { id: subtaskElem.id },
+                returning: true,
+              }
+            );
+            result.subtasks.push(updatedSubtask[0]); // Добавляем подзадачу в объект `subtasks`
+            return updatedSubtask[0];
+          })
+        );
+      })
+    );
+
+    // Логируем результат
+    console.log(result);
+
+    // Возвращаем результат
+    res.status(200).json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err });
   }
 });
 
