@@ -67,17 +67,39 @@ Router.post("/getFreeUsers", async (req, res) => {
 });
 
 Router.post("/create", async (req, res) => {
-  const { title, description, gitLink, img } = req.body;
-  const owner_id = req.session.user_id;
-
+  const { description, title, user_id, tasks } = req.body;
   try {
-    const data = await project.create({
+    const data = {
+      project: {},
+      tasks: [],
+      subtasks: [],
+    };
+
+    data.project = await project.create({
       title,
       description,
-      owner_id,
-      gitLink,
-      img,
+      owner_id: user_id,
     });
+    data.tasks = await Promise.all(
+      tasks.map(async (taskItem) => {
+        const createdTask = await task.create({
+          title: taskItem.title,
+          description: taskItem.description,
+          project_id: data.project.id,
+        });
+        data.subtasks.push(
+          ...(await Promise.all(
+            taskItem.subtasks.map(async (subtaskItem) => {
+              return await task.create({
+                title: subtaskItem.title,
+                task_id: createdTask.id,
+              });
+            })
+          ))
+        );
+        return createdTask;
+      })
+    );
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -160,9 +182,6 @@ Router.put("/updateAll", async (req, res) => {
         );
       })
     );
-
-    // Логируем результат
-    console.log(result);
 
     // Возвращаем результат
     res.status(200).json(result);
