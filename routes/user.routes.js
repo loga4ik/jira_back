@@ -82,6 +82,7 @@ Router.post("/create", async (req, res) => {
 
   try {
     const isBusy = await user.findOne({ where: { login: login } });
+    res.json(data);
     if (isBusy) {
       res.status(401).send("this login is already taken").json();
     } else {

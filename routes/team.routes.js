@@ -1,7 +1,7 @@
 const Router = require("express").Router();
 
 const { where } = require("sequelize");
-const { team, user } = require("../db/models");
+const { team, user, task, subtask } = require("../db/models");
 const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
@@ -38,12 +38,37 @@ Router.delete("/deleteUser/:user_id", async (req, res) => {
   const user_id = req.params.user_id;
   const project_id = req.body.project_id;
   try {
+    // Удаляем пользователя из команды по user_id и project_id
     await team.destroy({
       where: { user_id, project_id },
     });
 
+    // Получаем все tasks, которые относятся к данному проекту
+    const taskList = await task.findAll({
+      attributes: ["id"],
+      where: { project_id },
+    });
+
+    // Обновляем user_id у подзадач (subtask) для всех найденных task
+    const subtaskList = await Promise.all(
+      taskList.map(async (taskItem) => {
+        const updatedSubtasks = await subtask.update(
+          { user_id: null },
+          { where: { task_id: taskItem.id, user_id }, returning: true }
+        );
+        return updatedSubtasks[1]; // возвращаем массив измененных подзадач
+      })
+    );
+
+    // Объединяем все измененные подзадачи в один массив
+    const updatedSubtasks = subtaskList.flat();
+    console.log(updatedSubtasks); // Вывод всех измененных подзадач
+
+    // Получаем данные о свободных и активных пользователях
     const data = await getFreeAndActiveUsers(project_id, req);
-    res.json(data);
+
+    // Возвращаем данные и измененные подзадачи
+    res.json({ ...data, updatedSubtasks });
   } catch (err) {
     res.status(500).json(err);
   }
