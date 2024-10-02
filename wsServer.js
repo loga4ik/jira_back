@@ -1,6 +1,5 @@
 const WebSocket = require("ws");
 const handleMessage = require("./messageHandlers");
-const { message } = require("./db/models");
 
 const setupWebSocketServer = (server) => {
   const wss = new WebSocket.Server({ server }, () => {
@@ -10,22 +9,20 @@ const setupWebSocketServer = (server) => {
   wss.on("connection", (ws) => {
     console.log("Client connected");
 
-    // Отправка сообщения клиенту о том, что соединение установлено
-    ws.send(
-      JSON.stringify({ type: "connection", message: "Connection established" })
-    );
+    // Сохраняем projectId при подключении
+    ws.on("message", (message) => {
+      const parsedMessage = JSON.parse(message);
 
-    // ws.send(
-    //   JSON.stringify(async () => {
-    //     return await message.findAll({
-    //       where: {
-    //         project_id: projectId,
-    //       },
-    //     });
-    //   })
-    // );
+      // Проверяем, является ли это сообщение о присоединении к комнате
+      if (parsedMessage.type === "join_room") {
+        ws.projectId = parsedMessage.projectId; // Сохраняем projectId для текущего клиента
+        console.log(`User joined project: ${ws.projectId}`);
+        return; // Выходим из функции, чтобы не обрабатывать это сообщение как обычное
+      }
 
-    ws.on("message", (message) => handleMessage(message, wss));
+      // Обрабатываем остальные сообщения
+      handleMessage(message, wss, ws); // Передаем ws для дальнейшего использования
+    });
 
     ws.on("close", () => {
       console.log("Client disconnected");
