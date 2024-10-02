@@ -69,23 +69,15 @@ Router.post("/login", async (req, res) => {
 });
 
 Router.post("/create", async (req, res) => {
-  const {
-    login,
-    name,
-    surname,
-    patronymic,
-    email,
-    phone,
-    profile_image,
-    password,
-  } = req.body;
+  const { login, name, surname, patronymic, email, phone, password } = req.body;
 
   try {
     const isBusy = await user.findOne({ where: { login: login } });
-    res.json(data);
     if (isBusy) {
       res.status(401).send("this login is already taken").json();
     } else {
+      console.log(login, name, surname, patronymic, email, phone, password);
+
       const data = await user.create({
         login,
         name,
@@ -93,7 +85,6 @@ Router.post("/create", async (req, res) => {
         patronymic,
         email,
         phone,
-        profile_image,
         password,
         role_id: 1,
       });
