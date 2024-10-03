@@ -1,12 +1,44 @@
 const Router = require("express").Router();
 
+const { where } = require("sequelize");
 const { project, team, task, subtask } = require("../db/models");
 const getFreeAndActiveUsers = require("../middlewares/utils");
 
-Router.get("/", async (req, res) => {
-  const id = res.params.peoject_id;
+// Router.get("/", async (req, res) => {
+//   const id = res.params.peoject_id;
+//   try {
+//     const data = await project.findByPk(id);
+//     res.json(data);
+//   } catch (err) {
+//     res.status(500).json(err);
+//   }
+// });
+
+Router.get("/deleteProject/:project_id", async (req, res) => {
+  const project_id = req.params.project_id;
+  // const user_id = req.params.user_id;
+  console.log(project_id);
+
   try {
-    const data = await project.findByPk(id);
+    const data = await project.destroy({
+      where: { id: project_id },
+      force: true,
+    });
+
+    const taskList = await task.findAll({
+      where: { project_id },
+    });
+    taskList.forEach(async (taskEl) => {
+      await subtask.destroy({
+        where: { task_id: taskEl.id },
+        force: true,
+      });
+      await task.destroy({
+        where: { project_id },
+        force: true,
+      });
+    });
+
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -87,10 +119,11 @@ Router.post("/create", async (req, res) => {
           description: taskItem.description,
           project_id: data.project.id,
         });
+
         data.subtasks.push(
           ...(await Promise.all(
             taskItem.subtasks.map(async (subtaskItem) => {
-              return await task.create({
+              return await subtask.create({
                 title: subtaskItem.title,
                 task_id: createdTask.id,
               });

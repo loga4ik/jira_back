@@ -16,7 +16,6 @@ const setupWebSocketServer = (server) => {
       // Проверяем, является ли это сообщение о присоединении к комнате
       if (parsedMessage.type === "join_room") {
         ws.projectId = parsedMessage.projectId; // Сохраняем projectId для текущего клиента
-        console.log(`User joined project: ${ws.projectId}`);
         return; // Выходим из функции, чтобы не обрабатывать это сообщение как обычное
       }
 
