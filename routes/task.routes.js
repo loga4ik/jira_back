@@ -51,7 +51,7 @@ Router.post("/create", async (req, res) => {
 Router.delete("/delete:id", async (req, res) => {
   const id = req.params.id;
   try {
-    const data = await project.destroy({
+    const data = await task.destroy({
       where: { id },
     });
     res.json(data);
@@ -59,5 +59,44 @@ Router.delete("/delete:id", async (req, res) => {
     res.status(500).json(err);
   }
 });
+
+Router.post("/edite/:id", async (req, res) => {
+  const id = req.params.id;
+  const { title, description, subtasks } = req.body;
+  try {
+    // Обновляем задачу и получаем обновленные данные
+    const [_, updatedTasks] = await task.update(
+      { title, description },
+      { where: { id }, returning: true }
+    );
+    const taskData = updatedTasks[0]; // Извлекаем первую обновлённую запись
+
+    // Обрабатываем подзадачи
+    const subtaskList = await Promise.all(
+      subtasks.map(async (subtaskItem) => {
+        if (subtaskItem.id) {
+          // Обновляем существующую подзадачу
+          const [_, updatedSubtasks] = await subtask.update(
+            { title: subtaskItem.title, task_id: id },
+            { where: { id: subtaskItem.id }, returning: true }
+          );
+          return updatedSubtasks[0]; // Возвращаем первую обновлённую подзадачу
+        } else {
+          // Создаем новую подзадачу
+          const newSubtask = await subtask.create({
+            title: subtaskItem.title,
+            task_id: id, // Привязка подзадачи к задаче
+          });
+          return newSubtask; // Возвращаем созданную подзадачу
+        }
+      })
+    );
+
+    res.json({ taskData, subtaskList }); // Возвращаем обновленные данные задачи и подзадач
+  } catch (err) {
+    res.status(500).json(err);
+  }
+});
+
 
 module.exports = Router;
