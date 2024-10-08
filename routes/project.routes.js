@@ -54,6 +54,7 @@ Router.get("/getAllProjects", async (req, res) => {
   }
 });
 
+
 Router.get("/getUserProjects/:user_id", async (req, res) => {
   const user_id = req.params.user_id;
   try {

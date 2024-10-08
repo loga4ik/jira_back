@@ -1,7 +1,7 @@
 const Router = require("express").Router();
 
 const { where } = require("sequelize");
-const { team, user, task, subtask } = require("../db/models");
+const { team, user, task, subtask, project } = require("../db/models");
 const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/", async (req, res) => {
@@ -94,5 +94,30 @@ Router.put("/create", async (req, res) => {
     res.status(500).json(err);
   }
 });
+
+Router.get("/isAvailable/:project_id", async (req, res) => {
+  const project_id = req.params.project_id;
+  const user_id = req.session.user_id;
+  console.log(project_id, user_id);
+
+  try {
+    let isAvailable = await team.findOne({
+      where: { user_id, project_id },
+    });
+
+    if (!isAvailable) {
+      isAvailable = await project.findOne({
+        where: { id: project_id, owner_id: user_id },
+      });
+    }
+    console.log(isAvailable);
+
+    res.json(Boolean(isAvailable));
+  } catch (err) {
+    console.error(err); // Log the error for debugging
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 
 module.exports = Router;
