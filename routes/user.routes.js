@@ -76,7 +76,6 @@ Router.post("/create", async (req, res) => {
     if (isBusy) {
       res.status(401).send("this login is already taken").json();
     } else {
-      console.log(login, name, surname, patronymic, email, phone, password);
 
       const data = await user.create({
         login,

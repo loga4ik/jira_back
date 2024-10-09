@@ -1,5 +1,6 @@
 const Router = require("express").Router();
 
+const { where } = require("sequelize");
 const { task, subtask } = require("../db/models");
 
 Router.get("/", async (req, res) => {
@@ -63,6 +64,7 @@ Router.delete("/delete:id", async (req, res) => {
 Router.post("/edite/:id", async (req, res) => {
   const id = req.params.id;
   const { title, description, subtasks } = req.body;
+  
   try {
     // Обновляем задачу и получаем обновленные данные
     const [_, updatedTasks] = await task.update(
@@ -70,6 +72,9 @@ Router.post("/edite/:id", async (req, res) => {
       { where: { id }, returning: true }
     );
     const taskData = updatedTasks[0]; // Извлекаем первую обновлённую запись
+
+    // Получаем старый список подзадач
+    const oldSubtaskList = await subtask.findAll({ where: { task_id: id } });
 
     // Обрабатываем подзадачи
     const subtaskList = await Promise.all(
@@ -89,6 +94,17 @@ Router.post("/edite/:id", async (req, res) => {
           });
           return newSubtask; // Возвращаем созданную подзадачу
         }
+      })
+    );
+
+    // Ищем и удаляем подзадачи, которых нет в новом списке `subtasks`
+    const subtaskIds = subtasks.map(subtaskItem => subtaskItem.id); // Собираем список ID новых подзадач
+    const subtasksToDelete = oldSubtaskList.filter(oldSubtask => !subtaskIds.includes(oldSubtask.id)); // Находим подзадачи для удаления
+
+    // Удаляем подзадачи, которых нет в новом списке
+    await Promise.all(
+      subtasksToDelete.map(async (subtaskToDelete) => {
+        await subtask.destroy({ where: { id: subtaskToDelete.id } });
       })
     );
 

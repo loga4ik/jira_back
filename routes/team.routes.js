@@ -19,6 +19,7 @@ Router.get("/:project_id", async (req, res) => {
 
   try {
     const user_id_arr = await team.findAll({ where: { project_id } });
+
     const data = await Promise.all(
       user_id_arr.map(async (person) => {
         return await user.findOne({
@@ -27,8 +28,12 @@ Router.get("/:project_id", async (req, res) => {
         });
       })
     );
+    const currentProject = await project.findOne({ where: { id: project_id } });
+    const owner = await user.findOne({
+      where: { id: currentProject.dataValues.owner_id },
+    });
 
-    res.json(data);
+    res.json([...data, owner]);
   } catch (err) {
     res.status(500).json(err);
   }
@@ -62,11 +67,14 @@ Router.delete("/deleteUser/:user_id", async (req, res) => {
 
     // Объединяем все измененные подзадачи в один массив
     const updatedSubtasks = subtaskList.flat();
-    console.log(updatedSubtasks); // Вывод всех измененных подзадач
 
     // Получаем данные о свободных и активных пользователях
     const data = await getFreeAndActiveUsers(project_id, req);
-
+    const currentProject = await project.findOne({ where: { id: project_id } });
+    const owner = await user.findOne({
+      where: { id: currentProject.dataValues.owner_id },
+    });
+    data.activeUsers = [...data.activeUsers, owner];
     // Возвращаем данные и измененные подзадачи
     res.json({ ...data, updatedSubtasks });
   } catch (err) {
@@ -89,6 +97,11 @@ Router.put("/create", async (req, res) => {
         })
       : res.status(403).json("пользователь уже на проекте");
     const data = await getFreeAndActiveUsers(project_id, req);
+    const currentProject = await project.findOne({ where: { id: project_id } });
+    const owner = await user.findOne({
+      where: { id: currentProject.dataValues.owner_id },
+    });
+    data.activeUsers = [...data.activeUsers, owner];
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
@@ -98,7 +111,6 @@ Router.put("/create", async (req, res) => {
 Router.get("/isAvailable/:project_id", async (req, res) => {
   const project_id = req.params.project_id;
   const user_id = req.session.user_id;
-  console.log(project_id, user_id);
 
   try {
     let isAvailable = await team.findOne({
@@ -110,7 +122,6 @@ Router.get("/isAvailable/:project_id", async (req, res) => {
         where: { id: project_id, owner_id: user_id },
       });
     }
-    console.log(isAvailable);
 
     res.json(Boolean(isAvailable));
   } catch (err) {
@@ -118,6 +129,5 @@ Router.get("/isAvailable/:project_id", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
 
 module.exports = Router;

@@ -16,8 +16,6 @@ const getFreeAndActiveUsers = require("../middlewares/utils");
 
 Router.get("/deleteProject/:project_id", async (req, res) => {
   const project_id = req.params.project_id;
-  // const user_id = req.params.user_id;
-  console.log(project_id);
 
   try {
     const data = await project.destroy({
