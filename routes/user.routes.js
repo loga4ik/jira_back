@@ -55,13 +55,13 @@ Router.post("/login", async (req, res) => {
         hashedPassword: currentUser.password,
       });
       if (!currentUser || !isMatch) {
-        return res.status(401).send("invalid password or login").json();
+        return res.status(401).send("неверный логин или пароль").json();
       } else {
         req.session.user_id = currentUser.id;
         res.json(currentUser);
       }
     } catch (error) {
-      return res.status(401).send("invalid password or login").json();
+      return res.status(401).send("неверный логин или пароль").json();
     }
   } catch (err) {
     res.status(500).json(err);
