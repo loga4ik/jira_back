@@ -1,27 +1,24 @@
 const WebSocket = require("ws");
 const { message } = require("./db/models");
 
-const handleMessage = async (userMessage, wss, ws) => {
+const handleMessage = async ({ text }, wss, ws) => {
   try {
-    const parsedMessage = JSON.parse(userMessage);
-    const { user_id, text } = parsedMessage;
-
-    // Используем projectId, который был сохранен для текущего клиента
     const projectId = ws.projectId;
-
     if (!projectId) {
-      console.error("No project ID found for the client.");
+      console.error("Сообщение до входа в комнату проекта — пропускаем");
       return;
     }
+    if (typeof text !== "string" || !text.trim()) return;
 
-    // Сохраняем сообщение в базу данных
+    // Автор — пользователь из проверенного токена соединения.
+    // Раньше user_id приходил от клиента, и писать можно было от имени любого.
     const newMessage = await message.create({
-      user_id,
+      user_id: ws.userId,
       project_id: projectId,
-      text,
+      text: text.trim(),
     });
 
-    // Отправка сообщения только клиентам, подключенным к этой комнате
+    // рассылаем только тем, кто сидит в комнате этого проекта
     wss.clients.forEach((client) => {
       if (
         client.readyState === WebSocket.OPEN &&
@@ -31,7 +28,7 @@ const handleMessage = async (userMessage, wss, ws) => {
       }
     });
   } catch (error) {
-    console.error("Error handling message:", error);
+    console.error("Ошибка обработки сообщения:", error);
   }
 };
 

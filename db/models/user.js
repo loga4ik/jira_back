@@ -60,6 +60,17 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "user",
+      // Хеш пароля по умолчанию не выбирается: раньше он уходил наружу
+      // из /user, /login, /getAllUsers и из списков команды проекта.
+      // Там, где он действительно нужен (проверка при входе), — user.scope("withPassword").
+      defaultScope: {
+        attributes: { exclude: ["password"] },
+      },
+      scopes: {
+        withPassword: {
+          attributes: { include: ["password"] },
+        },
+      },
       hooks: {
         beforeCreate: async (user) => {
           const salt = await bcrypt.genSalt(10);

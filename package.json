@@ -4,23 +4,24 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon app.js --ext js,json --ignore sessions",
+    "dev": "nodemon app.js --ext js,json",
     "db-create": "npx sequelize db:create",
-    "dbr": "sequelize db:drop && sequelize db:create && sequelize db:migrate && sequelize db:seed:all"
+    "dbr": "sequelize db:drop && sequelize db:create && sequelize db:migrate && sequelize db:seed:all",
+    "db-migrate": "sequelize db:migrate"
   },
   "author": "loga4ik",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "express-session": "^1.18.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "mysql2": "^3.9.7",
     "pg": "^8.11.5",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.3",
-    "session-file-store": "^1.5.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {

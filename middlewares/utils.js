@@ -11,7 +11,7 @@ const getFreeAndActiveUsers = async (project_id, req) => {
     const activeUserIds = teamActiveUsers.map((user) => user.user_id);
 
     // Получаем текущего пользователя
-    const currentUserId = req.session.user_id;
+    const currentUserId = req.userId;
 
     // Убираем текущего пользователя из списка активных пользователей
     const filteredActiveUserIds = activeUserIds.filter(id => id !== currentUserId);

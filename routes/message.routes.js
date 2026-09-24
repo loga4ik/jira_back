@@ -1,12 +1,16 @@
 const express = require("express");
 const router = express.Router();
 const { message, user } = require("../db/models");
-const { where } = require("sequelize");
+const { isProjectMember } = require("../services/access");
 
 // Получение всех сообщений для конкретного проекта
 router.get("/:projectId", async (req, res) => {
-  const { projectId } = req.params;
+  const projectId = Number(req.params.projectId);
   try {
+    // переписку проекта видят только его участники
+    if (!(await isProjectMember(req.userId, projectId))) {
+      return res.status(403).json({ message: "Нет доступа к проекту" });
+    }
     const messages = await message.findAll({
       where: {
         project_id: projectId,
@@ -28,13 +32,17 @@ router.get("/:projectId", async (req, res) => {
 
 // Отправка сообщения в проект
 router.post("/:projectId", async (req, res) => {
-  const { projectId } = req.params;
-  const { sender_id, message } = req.body;
+  const projectId = Number(req.params.projectId);
+  const { text } = req.body;
   try {
+    if (!(await isProjectMember(req.userId, projectId))) {
+      return res.status(403).json({ message: "Нет доступа к проекту" });
+    }
+    // автор — тот, чей токен, а не то, что прислал клиент
     const newMessage = await message.create({
-      sender_id,
+      user_id: req.userId,
       project_id: projectId,
-      message,
+      text,
     });
     res.status(201).json(newMessage);
   } catch (err) {

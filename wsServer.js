@@ -1,30 +1,60 @@
 const WebSocket = require("ws");
 const handleMessage = require("./messageHandlers");
+const { verifyAccessToken } = require("./services/tokenService");
+const { isProjectMember } = require("./services/access");
+
+const WS_PATH = "/ws";
+
+const rejectUpgrade = (socket, status, reason) => {
+  socket.write(`HTTP/1.1 ${status} ${reason}\r\nConnection: close\r\n\r\n`);
+  socket.destroy();
+};
 
 const setupWebSocketServer = (server) => {
-  const wss = new WebSocket.Server({ server }, () => {
-    console.log("server ws started");
+  const wss = new WebSocket.Server({ noServer: true });
+
+  // Авторизация на рукопожатии, до открытия соединения.
+  // Браузерный WebSocket не умеет передавать заголовки,
+  // поэтому access-токен приходит query-параметром.
+  server.on("upgrade", (req, socket, head) => {
+    const url = new URL(req.url, "http://localhost");
+    if (url.pathname !== WS_PATH) {
+      return rejectUpgrade(socket, 404, "Not Found");
+    }
+
+    const userId = verifyAccessToken(url.searchParams.get("token"));
+    if (!userId) {
+      return rejectUpgrade(socket, 401, "Unauthorized");
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.userId = userId;
+      wss.emit("connection", ws, req);
+    });
   });
 
   wss.on("connection", (ws) => {
-    console.log("Client connected");
-
-    // Сохраняем projectId при подключении
-    ws.on("message", (message) => {
-      const parsedMessage = JSON.parse(message);
-
-      // Проверяем, является ли это сообщение о присоединении к комнате
-      if (parsedMessage.type === "join_room") {
-        ws.projectId = parsedMessage.projectId; // Сохраняем projectId для текущего клиента
-        return; // Выходим из функции, чтобы не обрабатывать это сообщение как обычное
+    ws.on("message", async (raw) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return;
       }
 
-      // Обрабатываем остальные сообщения
-      handleMessage(message, wss, ws); // Передаем ws для дальнейшего использования
-    });
+      if (parsed.type === "join_room") {
+        const projectId = Number(parsed.projectId);
+        // войти в комнату проекта может только его участник —
+        // раньше любой мог читать переписку любого проекта
+        if (!(await isProjectMember(ws.userId, projectId))) {
+          ws.send(JSON.stringify({ type: "error", message: "Нет доступа к проекту" }));
+          return;
+        }
+        ws.projectId = projectId;
+        return;
+      }
 
-    ws.on("close", () => {
-      console.log("Client disconnected");
+      handleMessage(parsed, wss, ws);
     });
   });
 

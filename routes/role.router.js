@@ -4,7 +4,7 @@ const { role } = require("../db/models");
 
 Router.get("/", async (req, res) => {
   try {
-    const data = await role.findByPk(req.session.user_id);
+    const data = await role.findByPk(req.userId);
     res.json(data);
   } catch (err) {
     res.status(500).json(err);
