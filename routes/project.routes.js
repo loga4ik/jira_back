@@ -2,27 +2,17 @@ const Router = require("express").Router();
 
 const { where } = require("sequelize");
 const { project, team, task, subtask } = require("../db/models");
-const getFreeAndActiveUsers = require("../middlewares/utils");
+const getFreeAndActiveUsers = require("../services/team");
+const { requireProjectMember, requireProjectOwner } = require("../middlewares/projectAccess");
 
-// Router.get("/", async (req, res) => {
-//   const id = res.params.peoject_id;
-//   try {
-//     const data = await project.findByPk(id);
-//     res.json(data);
-//   } catch (err) {
-//     res.status(500).json(err);
-//   }
-// });
-
-Router.get("/deleteProject/:project_id", async (req, res) => {
-  const project_id = req.params.project_id;
+Router.get("/deleteProject/:project_id", requireProjectOwner((req) => req.params.project_id), async (req, res) => {
+  const project_id = req.projectId;
 
   try {
     const data = await project.destroy({
       where: { id: project_id },
       force: true,
     });
-
     const taskList = await task.findAll({
       where: { project_id },
     });
@@ -43,18 +33,13 @@ Router.get("/deleteProject/:project_id", async (req, res) => {
   }
 });
 
-Router.get("/getAllProjects", async (req, res) => {
-  try {
-    const data = await project.findAll();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
-
-
 Router.get("/getUserProjects/:user_id", async (req, res) => {
-  const user_id = req.params.user_id;
+  // id в адресе оставлен ради совместимости с фронтом, но чужой список
+  // не отдаём: смотреть можно только свои проекты.
+  const user_id = req.userId;
+  if (Number(req.params.user_id) !== user_id) {
+    return res.status(403).json({ message: "Можно смотреть только свои проекты" });
+  }
   try {
     const owner = await project.findAll({ where: { owner_id: user_id } });
     const projectIds = await team.findAll({
@@ -72,8 +57,8 @@ Router.get("/getUserProjects/:user_id", async (req, res) => {
   }
 });
 
-Router.get("/:id", async (req, res) => {
-  const id = req.params.id;
+Router.get("/:id", requireProjectMember((req) => req.params.id), async (req, res) => {
+  const id = req.projectId;
   try {
     const data = await project.findAll({ where: { id: id } });
     res.json(data);
@@ -82,8 +67,8 @@ Router.get("/:id", async (req, res) => {
   }
 });
 
-Router.post("/getFreeUsers", async (req, res) => {
-  const project_id = req.body.project_id;
+Router.post("/getFreeUsers", requireProjectOwner((req) => req.body.project_id), async (req, res) => {
+  const project_id = req.projectId;
 
   try {
     // const data = await
@@ -98,7 +83,9 @@ Router.post("/getFreeUsers", async (req, res) => {
 });
 
 Router.post("/create", async (req, res) => {
-  const { description, title, user_id, tasks } = req.body;
+  // Владелец — тот, кто вошёл. user_id из тела больше не используется:
+  // иначе можно было создать проект от имени другого пользователя.
+  const { description, title, tasks = [] } = req.body;
   try {
     const data = {
       project: {},
@@ -109,7 +96,7 @@ Router.post("/create", async (req, res) => {
     data.project = await project.create({
       title,
       description,
-      owner_id: user_id,
+      owner_id: req.userId,
     });
     data.tasks = await Promise.all(
       tasks.map(async (taskItem) => {
@@ -138,9 +125,9 @@ Router.post("/create", async (req, res) => {
   }
 });
 
-Router.put("/update/:id", async (req, res) => {
+Router.put("/update/:id", requireProjectOwner((req) => req.params.id), async (req, res) => {
   const { title, description, gitLink, img } = req.body;
-  const id = req.params.id;
+  const id = req.projectId;
 
   try {
     await project.update(
@@ -154,8 +141,8 @@ Router.put("/update/:id", async (req, res) => {
   }
 });
 
-Router.delete("/delete/:id", async (req, res) => {
-  const id = req.params.id;
+Router.delete("/delete/:id", requireProjectOwner((req) => req.params.id), async (req, res) => {
+  const id = req.projectId;
   try {
     const data = await project.destroy({
       where: { id },
@@ -166,8 +153,9 @@ Router.delete("/delete/:id", async (req, res) => {
   }
 });
 
-Router.put("/updateAll", async (req, res) => {
-  const { title, description, project_id, tasks } = req.body;
+Router.put("/updateAll", requireProjectOwner((req) => req.body.project_id), async (req, res) => {
+  const { title, description, tasks = [] } = req.body;
+  const project_id = req.projectId;
 
   try {
     let result = {
@@ -192,23 +180,27 @@ Router.put("/updateAll", async (req, res) => {
         const [__, updatedTask] = await task.update(
           { ...taskElem, project_id },
           {
-            where: { id: taskElem.id },
+            // только задачи этого проекта: иначе через свой проект
+            // можно было переписать и «забрать» чужую задачу по id
+            where: { id: taskElem.id, project_id },
             returning: true,
           }
         );
 
+        if (!updatedTask[0]) return; // задача не из этого проекта — пропускаем
         result.tasks.push(updatedTask[0]); // Добавляем задачу в объект `tasks`
 
         const updatedSubtasks = await Promise.all(
-          taskElem.subtasks.map(async (subtaskElem) => {
+          (taskElem.subtasks ?? []).map(async (subtaskElem) => {
             const [___, updatedSubtask] = await subtask.update(
               { ...subtaskElem, task_id: taskElem.id },
               {
-                where: { id: subtaskElem.id },
+                // подзадача должна принадлежать этой задаче
+                where: { id: subtaskElem.id, task_id: taskElem.id },
                 returning: true,
               }
             );
-            result.subtasks.push(updatedSubtask[0]); // Добавляем подзадачу в объект `subtasks`
+            if (updatedSubtask[0]) result.subtasks.push(updatedSubtask[0]); // Добавляем подзадачу в объект `subtasks`
             return updatedSubtask[0];
           })
         );

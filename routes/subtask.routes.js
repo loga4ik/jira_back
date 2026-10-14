@@ -1,17 +1,20 @@
 const Router = require("express").Router();
 
 const { subtask, status } = require("../db/models");
+const {
+  isProjectMember,
+  projectIdOfTask,
+  projectIdOfSubtask,
+} = require("../services/access");
+const { requireProjectMember } = require("../middlewares/projectAccess");
 
-Router.get("/", async (req, res) => {
-  try {
-    const data = await subtask.findAll();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
+/** Исполнителем можно назначить только участника проекта (или снять — null). */
+const isValidAssignee = (userId, projectId) =>
+  userId === null || userId === undefined
+    ? true
+    : isProjectMember(Number(userId), projectId);
 
-Router.post("/create", async (req, res) => {
+Router.post("/create", requireProjectMember((req) => projectIdOfTask(req.body.task_id)), async (req, res) => {
   const { task_id, title } = req.body;
   try {
     const statusRes = await status.findOne({
@@ -29,9 +32,12 @@ Router.post("/create", async (req, res) => {
   }
 });
 
-Router.put("/addUserInSubtask", async (req, res) => {
+Router.put("/addUserInSubtask", requireProjectMember((req) => projectIdOfSubtask(req.body.id)), async (req, res) => {
   const { id, user_id } = req.body;
   try {
+    if (!(await isValidAssignee(user_id, req.projectId))) {
+      return res.status(400).json({ message: "Исполнитель не участник проекта" });
+    }
     const status_id = status.findOne({ where: { title: "in process" } });
     const data = await subtask.update(
       { user_id, status_id },
@@ -43,10 +49,13 @@ Router.put("/addUserInSubtask", async (req, res) => {
   }
 });
 
-Router.put("/addUserInSubtaskRename", async (req, res) => {
+Router.put("/addUserInSubtaskRename", requireProjectMember((req) => projectIdOfSubtask(req.body.id)), async (req, res) => {
   const { id, user_id, status_id, title } = req.body;
 
   try {
+    if (!(await isValidAssignee(user_id, req.projectId))) {
+      return res.status(400).json({ message: "Исполнитель не участник проекта" });
+    }
     const isApdated = await subtask.update(
       { user_id, status_id, title },
       { where: { id } }
@@ -58,7 +67,7 @@ Router.put("/addUserInSubtaskRename", async (req, res) => {
   }
 });
 
-Router.put("/finishSubtask:id", async (req, res) => {
+Router.put("/finishSubtask:id", requireProjectMember((req) => projectIdOfSubtask(req.params.id)), async (req, res) => {
   const id = req.params.id;
   try {
     const status_id = status.findOne({ where: { title: "completed" } });
@@ -69,10 +78,11 @@ Router.put("/finishSubtask:id", async (req, res) => {
   }
 });
 
-Router.delete("/delete:id", async (req, res) => {
+Router.delete("/delete:id", requireProjectMember((req) => projectIdOfSubtask(req.params.id)), async (req, res) => {
   const id = req.params.id;
   try {
-    const data = await project.destroy({
+    // раньше здесь удалялся project с этим id (и падало: project не импортирован)
+    const data = await subtask.destroy({
       where: { id },
     });
     res.json(data);

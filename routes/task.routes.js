@@ -2,18 +2,11 @@ const Router = require("express").Router();
 
 const { where } = require("sequelize");
 const { task, subtask } = require("../db/models");
+const { requireProjectMember } = require("../middlewares/projectAccess");
+const { projectIdOfTask } = require("../services/access");
 
-Router.get("/", async (req, res) => {
-  try {
-    const data = await task.findAll();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
-
-Router.get("/getTasksAndSubtasks/:project_id", async (req, res) => {
-  const project_id = req.params.project_id;
+Router.get("/getTasksAndSubtasks/:project_id", requireProjectMember((req) => req.params.project_id), async (req, res) => {
+  const project_id = req.projectId;
   try {
     const taskArr = await task.findAll({
       where: {
@@ -38,8 +31,9 @@ Router.get("/getTasksAndSubtasks/:project_id", async (req, res) => {
   }
 });
 
-Router.post("/create", async (req, res) => {
-  const { project_id, title, description } = req.body;
+Router.post("/create", requireProjectMember((req) => req.body.project_id), async (req, res) => {
+  const { title, description } = req.body;
+  const project_id = req.projectId;
 
   try {
     const data = await task.create({ project_id, title, description });
@@ -49,7 +43,7 @@ Router.post("/create", async (req, res) => {
   }
 });
 
-Router.delete("/delete:id", async (req, res) => {
+Router.delete("/delete:id", requireProjectMember((req) => projectIdOfTask(req.params.id)), async (req, res) => {
   const id = req.params.id;
   try {
     const data = await task.destroy({
@@ -61,9 +55,9 @@ Router.delete("/delete:id", async (req, res) => {
   }
 });
 
-Router.post("/edite/:id", async (req, res) => {
-  const id = req.params.id;
-  const { title, description, subtasks } = req.body;
+Router.post("/edite/:id", requireProjectMember((req) => projectIdOfTask(req.params.id)), async (req, res) => {
+  const id = Number(req.params.id);
+  const { title, description, subtasks = [] } = req.body;
   
   try {
     // Обновляем задачу и получаем обновленные данные
@@ -83,7 +77,9 @@ Router.post("/edite/:id", async (req, res) => {
           // Обновляем существующую подзадачу
           const [_, updatedSubtasks] = await subtask.update(
             { title: subtaskItem.title, task_id: id },
-            { where: { id: subtaskItem.id }, returning: true }
+            // только подзадачи этой задачи: иначе через свою задачу
+            // можно было переписать чужую подзадачу по id
+            { where: { id: subtaskItem.id, task_id: id }, returning: true }
           );
           return updatedSubtasks[0]; // Возвращаем первую обновлённую подзадачу
         } else {
@@ -108,7 +104,7 @@ Router.post("/edite/:id", async (req, res) => {
       })
     );
 
-    res.json({ taskData, subtaskList }); // Возвращаем обновленные данные задачи и подзадач
+    res.json({ taskData, subtaskList: subtaskList.filter(Boolean) }); // Возвращаем обновленные данные задачи и подзадач
   } catch (err) {
     res.status(500).json(err);
   }

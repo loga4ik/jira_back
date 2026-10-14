@@ -2,21 +2,13 @@ const Router = require("express").Router();
 
 const { where } = require("sequelize");
 const { team, user, task, subtask, project } = require("../db/models");
-const getFreeAndActiveUsers = require("../middlewares/utils");
+const getFreeAndActiveUsers = require("../services/team");
 const { isProjectMember } = require("../services/access");
-
-Router.get("/", async (req, res) => {
-  try {
-    const data = await team.findAll();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
+const { requireProjectMember, requireProjectOwner } = require("../middlewares/projectAccess");
 
 //получение списка участников проекта
-Router.get("/:project_id", async (req, res) => {
-  const project_id = req.params.project_id;
+Router.get("/:project_id", requireProjectMember((req) => req.params.project_id), async (req, res) => {
+  const project_id = req.projectId;
 
   try {
     const user_id_arr = await team.findAll({ where: { project_id } });
@@ -40,9 +32,9 @@ Router.get("/:project_id", async (req, res) => {
   }
 });
 
-Router.delete("/deleteUser/:user_id", async (req, res) => {
+Router.delete("/deleteUser/:user_id", requireProjectOwner((req) => req.body.project_id), async (req, res) => {
   const user_id = req.params.user_id;
-  const project_id = req.body.project_id;
+  const project_id = req.projectId;
   try {
     // Удаляем пользователя из команды по user_id и project_id
     await team.destroy({
@@ -83,20 +75,21 @@ Router.delete("/deleteUser/:user_id", async (req, res) => {
   }
 });
 
-Router.put("/create", async (req, res) => {
-  const { user_id, project_id } = req.body;
+Router.put("/create", requireProjectOwner((req) => req.body.project_id), async (req, res) => {
+  const { user_id } = req.body;
+  const project_id = req.projectId;
 
   try {
     const isAlreadyInTeam = await team.findAll({
       where: { user_id, project_id },
     });
 
-    !isAlreadyInTeam.length
-      ? await team.create({
-          user_id,
-          project_id,
-        })
-      : res.status(403).json("пользователь уже на проекте");
+    // Раньше здесь отправлялся ответ 403, а код шёл дальше и пытался
+    // ответить второй раз — Express падал с «headers already sent».
+    if (isAlreadyInTeam.length) {
+      return res.status(409).json({ message: "Пользователь уже в команде" });
+    }
+    await team.create({ user_id, project_id });
     const data = await getFreeAndActiveUsers(project_id, req);
     const currentProject = await project.findOne({ where: { id: project_id } });
     const owner = await user.findOne({

@@ -1,16 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const { message, user } = require("../db/models");
-const { isProjectMember } = require("../services/access");
+const { requireProjectMember } = require("../middlewares/projectAccess");
 
-// Получение всех сообщений для конкретного проекта
-router.get("/:projectId", async (req, res) => {
-  const projectId = Number(req.params.projectId);
+// Получение всех сообщений для конкретного проекта.
+// Переписку видят и пишут только участники — проверяет requireProjectMember.
+router.get("/:projectId", requireProjectMember((req) => req.params.projectId), async (req, res) => {
+  const projectId = req.projectId;
   try {
-    // переписку проекта видят только его участники
-    if (!(await isProjectMember(req.userId, projectId))) {
-      return res.status(403).json({ message: "Нет доступа к проекту" });
-    }
     const messages = await message.findAll({
       where: {
         project_id: projectId,
@@ -31,13 +28,10 @@ router.get("/:projectId", async (req, res) => {
 });
 
 // Отправка сообщения в проект
-router.post("/:projectId", async (req, res) => {
-  const projectId = Number(req.params.projectId);
+router.post("/:projectId", requireProjectMember((req) => req.params.projectId), async (req, res) => {
+  const projectId = req.projectId;
   const { text } = req.body;
   try {
-    if (!(await isProjectMember(req.userId, projectId))) {
-      return res.status(403).json({ message: "Нет доступа к проекту" });
-    }
     // автор — тот, чей токен, а не то, что прислал клиент
     const newMessage = await message.create({
       user_id: req.userId,

@@ -52,6 +52,7 @@ const issueRefreshToken = async ({
   userAgent = null,
 }) => {
   const raw = crypto.randomBytes(32).toString("base64url");
+  console.log(raw)
   await refresh_token.create({
     user_id: userId,
     token_hash: hashToken(raw),
