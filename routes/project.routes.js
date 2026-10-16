@@ -1,37 +1,9 @@
 const Router = require("express").Router();
 
 const { where } = require("sequelize");
-const { project, team, task, subtask } = require("../db/models");
+const { sequelize, project, team, task, subtask, message } = require("../db/models");
 const getFreeAndActiveUsers = require("../services/team");
 const { requireProjectMember, requireProjectOwner } = require("../middlewares/projectAccess");
-
-Router.get("/deleteProject/:project_id", requireProjectOwner((req) => req.params.project_id), async (req, res) => {
-  const project_id = req.projectId;
-
-  try {
-    const data = await project.destroy({
-      where: { id: project_id },
-      force: true,
-    });
-    const taskList = await task.findAll({
-      where: { project_id },
-    });
-    taskList.forEach(async (taskEl) => {
-      await subtask.destroy({
-        where: { task_id: taskEl.id },
-        force: true,
-      });
-      await task.destroy({
-        where: { project_id },
-        force: true,
-      });
-    });
-
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
 
 Router.get("/getUserProjects/:user_id", async (req, res) => {
   // id в адресе оставлен ради совместимости с фронтом, но чужой список
@@ -141,15 +113,27 @@ Router.put("/update/:id", requireProjectOwner((req) => req.params.id), async (re
   }
 });
 
-Router.delete("/delete/:id", requireProjectOwner((req) => req.params.id), async (req, res) => {
-  const id = req.projectId;
+// Удаление проекта со всем содержимым. Внешних ключей с каскадом в базе нет,
+// поэтому задачи, подзадачи, команду и чат удаляем сами — в одной транзакции:
+// либо удалится всё, либо (при ошибке) ничего.
+Router.delete("/:id", requireProjectOwner((req) => req.params.id), async (req, res) => {
+  const project_id = req.projectId;
   try {
-    const data = await project.destroy({
-      where: { id },
+    await sequelize.transaction(async (transaction) => {
+      const taskIds = (
+        await task.findAll({ attributes: ["id"], where: { project_id }, transaction })
+      ).map((t) => t.id);
+
+      await subtask.destroy({ where: { task_id: taskIds }, transaction });
+      await task.destroy({ where: { project_id }, transaction });
+      await team.destroy({ where: { project_id }, transaction });
+      await message.destroy({ where: { project_id }, transaction });
+      await project.destroy({ where: { id: project_id }, transaction });
     });
-    res.json(data);
+    res.status(204).end();
   } catch (err) {
-    res.status(500).json(err);
+    console.error(err);
+    res.status(500).json({ message: "Не удалось удалить проект" });
   }
 });
 
