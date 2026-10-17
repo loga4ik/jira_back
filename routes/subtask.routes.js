@@ -1,4 +1,5 @@
 const Router = require("express").Router();
+const serverError = require("../services/serverError");
 
 const { subtask, status } = require("../db/models");
 const {
@@ -28,7 +29,7 @@ Router.post("/create", requireProjectMember((req) => projectIdOfTask(req.body.ta
     });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -45,7 +46,7 @@ Router.put("/addUserInSubtask", requireProjectMember((req) => projectIdOfSubtask
     );
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -63,7 +64,7 @@ Router.put("/addUserInSubtaskRename", requireProjectMember((req) => projectIdOfS
     const data = await subtask.findByPk(id);
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -74,7 +75,7 @@ Router.put("/finishSubtask:id", requireProjectMember((req) => projectIdOfSubtask
     const data = await subtask.update({ status_id }, { where: { id } });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -87,7 +88,7 @@ Router.delete("/delete:id", requireProjectMember((req) => projectIdOfSubtask(req
     });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 

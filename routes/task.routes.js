@@ -1,4 +1,5 @@
 const Router = require("express").Router();
+const serverError = require("../services/serverError");
 
 const { where } = require("sequelize");
 const { task, subtask } = require("../db/models");
@@ -27,7 +28,7 @@ Router.get("/getTasksAndSubtasks/:project_id", requireProjectMember((req) => req
     );
     res.json({ tasks: taskArr, subtasks: subtaskArr });
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -39,7 +40,7 @@ Router.post("/create", requireProjectMember((req) => req.body.project_id), async
     const data = await task.create({ project_id, title, description });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -51,7 +52,7 @@ Router.delete("/delete:id", requireProjectMember((req) => projectIdOfTask(req.pa
     });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -106,7 +107,7 @@ Router.post("/edite/:id", requireProjectMember((req) => projectIdOfTask(req.para
 
     res.json({ taskData, subtaskList: subtaskList.filter(Boolean) }); // Возвращаем обновленные данные задачи и подзадач
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 

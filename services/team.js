@@ -1,6 +1,9 @@
 const { project, team, user } = require("../db/models");
 const { Op } = require("sequelize");
 
+/** Что о пользователе можно показывать другим: без email, телефона и пароля. */
+const PUBLIC_USER_ATTRIBUTES = ["id", "login", "name", "surname", "profile_image"];
+
 const getFreeAndActiveUsers = async (project_id, req) => {
   try {
     // Получаем активных пользователей команды
@@ -18,7 +21,7 @@ const getFreeAndActiveUsers = async (project_id, req) => {
 
     // Получаем свободных пользователей
     const freeUsers = await user.findAll({
-      attributes: ["id", "login", "name", "surname", "profile_image"],
+      attributes: PUBLIC_USER_ATTRIBUTES,
       where: {
         id: {
           [Op.notIn]: [...filteredActiveUserIds, currentUserId],
@@ -28,7 +31,7 @@ const getFreeAndActiveUsers = async (project_id, req) => {
 
     // Получаем активных пользователей (исключая текущего)
     const activeUsers = await user.findAll({
-      attributes: ["id", "login", "name", "surname", "profile_image"],
+      attributes: PUBLIC_USER_ATTRIBUTES,
       where: {
         id: filteredActiveUserIds,
       },
@@ -45,3 +48,4 @@ const getFreeAndActiveUsers = async (project_id, req) => {
 };
 
 module.exports = getFreeAndActiveUsers;
+module.exports.PUBLIC_USER_ATTRIBUTES = PUBLIC_USER_ATTRIBUTES;

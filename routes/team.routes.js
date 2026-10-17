@@ -1,8 +1,10 @@
 const Router = require("express").Router();
+const serverError = require("../services/serverError");
 
 const { where } = require("sequelize");
 const { team, user, task, subtask, project } = require("../db/models");
 const getFreeAndActiveUsers = require("../services/team");
+const { PUBLIC_USER_ATTRIBUTES } = getFreeAndActiveUsers;
 const { isProjectMember } = require("../services/access");
 const { requireProjectMember, requireProjectOwner } = require("../middlewares/projectAccess");
 
@@ -22,13 +24,15 @@ Router.get("/:project_id", requireProjectMember((req) => req.params.project_id),
       })
     );
     const currentProject = await project.findOne({ where: { id: project_id } });
+    // только публичные поля: email и телефон владельца участникам не нужны
     const owner = await user.findOne({
+      attributes: PUBLIC_USER_ATTRIBUTES,
       where: { id: currentProject.dataValues.owner_id },
     });
 
     res.json([...data, owner]);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -64,14 +68,16 @@ Router.delete("/deleteUser/:user_id", requireProjectOwner((req) => req.body.proj
     // Получаем данные о свободных и активных пользователях
     const data = await getFreeAndActiveUsers(project_id, req);
     const currentProject = await project.findOne({ where: { id: project_id } });
+    // только публичные поля: email и телефон владельца участникам не нужны
     const owner = await user.findOne({
+      attributes: PUBLIC_USER_ATTRIBUTES,
       where: { id: currentProject.dataValues.owner_id },
     });
     data.activeUsers = [...data.activeUsers, owner];
     // Возвращаем данные и измененные подзадачи
     res.json({ ...data, updatedSubtasks });
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -92,13 +98,15 @@ Router.put("/create", requireProjectOwner((req) => req.body.project_id), async (
     await team.create({ user_id, project_id });
     const data = await getFreeAndActiveUsers(project_id, req);
     const currentProject = await project.findOne({ where: { id: project_id } });
+    // только публичные поля: email и телефон владельца участникам не нужны
     const owner = await user.findOne({
+      attributes: PUBLIC_USER_ATTRIBUTES,
       where: { id: currentProject.dataValues.owner_id },
     });
     data.activeUsers = [...data.activeUsers, owner];
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -107,7 +115,7 @@ Router.get("/isAvailable/:project_id", async (req, res) => {
     res.json(await isProjectMember(req.userId, Number(req.params.project_id)));
   } catch (err) {
     console.error(err); // Log the error for debugging
-    res.status(500).json({ error: "Internal Server Error" });
+    serverError(res, err);
   }
 });
 

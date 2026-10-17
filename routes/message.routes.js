@@ -1,4 +1,5 @@
 const express = require("express");
+const serverError = require("../services/serverError");
 const router = express.Router();
 const { message, user } = require("../db/models");
 const { requireProjectMember } = require("../middlewares/projectAccess");
@@ -23,7 +24,7 @@ router.get("/:projectId", requireProjectMember((req) => req.params.projectId), a
 
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ error: "Internal Server Error" });
+    serverError(res, err);
   }
 });
 
@@ -40,7 +41,7 @@ router.post("/:projectId", requireProjectMember((req) => req.params.projectId), 
     });
     res.status(201).json(newMessage);
   } catch (err) {
-    res.status(500).json({ error: "Internal Server Error" });
+    serverError(res, err);
   }
 });
 

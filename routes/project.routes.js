@@ -1,4 +1,5 @@
 const Router = require("express").Router();
+const serverError = require("../services/serverError");
 
 const { where } = require("sequelize");
 const { sequelize, project, team, task, subtask, message } = require("../db/models");
@@ -25,7 +26,7 @@ Router.get("/getUserProjects/:user_id", async (req, res) => {
     );
     res.status(200).json({ owner, working });
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -35,7 +36,7 @@ Router.get("/:id", requireProjectMember((req) => req.params.id), async (req, res
     const data = await project.findAll({ where: { id: id } });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -48,9 +49,7 @@ Router.post("/getFreeUsers", requireProjectOwner((req) => req.body.project_id), 
 
     res.json(data.freeUsers);
   } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Ошибка при получении данных", details: err });
+    serverError(res, err);
   }
 });
 
@@ -93,7 +92,7 @@ Router.post("/create", async (req, res) => {
     );
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -109,7 +108,7 @@ Router.put("/update/:id", requireProjectOwner((req) => req.params.id), async (re
     const data = await project.findOne({ where: { id } });
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
@@ -132,8 +131,7 @@ Router.delete("/:id", requireProjectOwner((req) => req.params.id), async (req, r
     });
     res.status(204).end();
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Не удалось удалить проект" });
+    serverError(res, err);
   }
 });
 
@@ -194,8 +192,7 @@ Router.put("/updateAll", requireProjectOwner((req) => req.body.project_id), asyn
     // Возвращаем результат
     res.status(200).json(result);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error", error: err });
+    serverError(res, err);
   }
 });
 

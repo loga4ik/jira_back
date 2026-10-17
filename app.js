@@ -9,18 +9,20 @@ const cookieParser = require("cookie-parser");
 require("./config/auth");
 
 const routes = require("./importRoutes");
+const cors = require("./middlewares/cors");
 const setupWebSocketServer = require("./wsServer");
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 const server = http.createServer(app);
 
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  next();
-});
+// не сообщаем всем подряд, на чём написан сервер
+app.disable("x-powered-by");
+// за прокси хостинга (Render, Railway) IP клиента приходит в X-Forwarded-For —
+// без этого ограничение попыток входа считало бы всех одним пользователем
+if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY));
+
+app.use(cors);
 
 app.use(morgan("dev"));
 app.use(express.json());

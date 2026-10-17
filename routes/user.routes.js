@@ -5,6 +5,8 @@ const { user } = require("../db/models");
 const requireAuth = require("../middlewares/requireAuth");
 const authConfig = require("../config/auth");
 const tokens = require("../services/tokenService");
+const serverError = require("../services/serverError");
+const { loginLimiter, registerLimiter } = require("../middlewares/rateLimit");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -48,14 +50,10 @@ const startSession = async (req, res, account) => {
   });
 };
 
-const serverError = (res, err) => {
-  console.error(err);
-  res.status(500).json({ message: "Ошибка сервера" });
-};
 
 // ---------- публичные маршруты ----------
 
-Router.post("/login", async (req, res) => {
+Router.post("/login", loginLimiter, async (req, res) => {
   const { login, password } = req.body;
   try {
     const account =
@@ -72,7 +70,7 @@ Router.post("/login", async (req, res) => {
   }
 });
 
-Router.post("/create", async (req, res) => {
+Router.post("/create", registerLimiter, async (req, res) => {
   const { login, name, surname, patronymic, email, phone, password } = req.body;
   try {
     if (!login || !password) {
@@ -150,21 +148,9 @@ Router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-Router.get("/getAllUsers", requireAuth, async (req, res) => {
-  try {
-    res.json(await user.findAll());
-  } catch (err) {
-    serverError(res, err);
-  }
-});
-
-Router.get("/:id", requireAuth, async (req, res) => {
-  try {
-    res.json(await user.findAll({ where: { id: req.params.id } }));
-  } catch (err) {
-    serverError(res, err);
-  }
-});
+// Списка всех пользователей и чужого профиля по id больше нет: они отдавали
+// любому вошедшему email и телефоны всех пользователей. Фронту они не нужны —
+// своих данных хватает /user, участников проекта — /team/:id.
 
 Router.delete("/delete/:id", requireAuth, async (req, res) => {
   const id = Number(req.params.id);

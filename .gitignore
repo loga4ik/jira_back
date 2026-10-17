@@ -5,6 +5,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+# старый конфиг базы с паролем — теперь подключение задаётся в .env
+db/config/database.json
 
 # файлы сессий express-session (уходят вместе с переездом на JWT)
 sessions/

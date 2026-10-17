@@ -1,4 +1,5 @@
 const Router = require("express").Router();
+const serverError = require("../services/serverError");
 
 const { status } = require("../db/models");
 
@@ -7,18 +8,11 @@ Router.get("/", async (req, res) => {
     const data = await status.findAll();
     res.json(data);
   } catch (err) {
-    res.status(500).json(err);
+    serverError(res, err);
   }
 });
 
-Router.post("/create", async (req, res) => {
-  const { title } = req.body;
-  try {
-    const data = await status.create({ title });
-    res.json(data);
-  } catch (err) {
-    res.status(500).json(err);
-  }
-});
+// Создание статусов убрано: справочник заполняется сидом
+// (db/seeders), а раньше добавить статус мог любой вошедший.
 
 module.exports = Router;
